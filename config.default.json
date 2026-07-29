@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "host": "127.0.0.1",
+  "port": 8080,
+  "interval_seconds": 300,
+  "backup_dir": "",
+  "keep_backups": 30,
+  "also_copy_after_save": true,
+  "compositions_dir": "",
+  "start_with_windows": false
+}

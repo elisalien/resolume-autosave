@@ -1,0 +1,11 @@
+config.json
+autosave.log
+*.log
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.lnk
+.DS_Store
+Thumbs.db
+
