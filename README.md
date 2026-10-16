@@ -1,8 +1,14 @@
 # Resolume Autosave
 
-Windows system-tray companion that periodically saves the open **Resolume Arena** composition and keeps rolling timestamped `.avc` backups.
+> Windows system-tray companion that periodically saves the open Resolume Arena composition and keeps rolling timestamped `.avc` backups.
 
-Arena has no built-in autosave. This tool calls Arena’s local webserver API on an interval, then copies the composition file so a crash or bad edit does not wipe the last good state.
+![Platform](https://img.shields.io/badge/platform-Windows-informational) ![Stack](https://img.shields.io/badge/stack-Python%203.10%2B-blue) ![Resolume](https://img.shields.io/badge/Resolume-Arena-purple)
+
+<p align="center"><img src="assets/gumroad-cover.png" width="600" alt="Resolume Autosave cover"></p>
+
+## About
+
+Arena has no built-in autosave. This tool calls Arena's local webserver API on an interval, then copies the composition file so a crash or bad edit does not wipe the last good state.
 
 ## Features
 
@@ -13,7 +19,9 @@ Arena has no built-in autosave. This tool calls Arena’s local webserver API on
 - Settings UI: interval, port, folders, start with Windows
 - Manual **Save now**, pause/resume, log viewer
 
-## Requirements
+## Getting started
+
+### Requirements
 
 | Need | Detail |
 |------|--------|
@@ -21,10 +29,11 @@ Arena has no built-in autosave. This tool calls Arena’s local webserver API on
 | Composition on disk | Save once in Arena (`Save As`) before relying on autosave |
 | Python | 3.10+ on `PATH` |
 
-## Install
+### Install
+
+From the repository folder:
 
 ```bat
-cd autosave
 pip install -r requirements.txt
 python create_shortcut.py
 ```
@@ -35,9 +44,11 @@ Then start with **`Resolume Autosave.lnk`**, `start.bat`, or:
 pythonw app.py
 ```
 
-Use `run_console.bat` if you want a visible console for debugging.
+`start.bat` / `run.bat` install the requirements and launch the tray app in the background. Use `run_console.bat` if you want a visible console for debugging.
 
-## How it works
+## Usage
+
+### How it works
 
 Every **N seconds** (default **300** / 5 minutes):
 
@@ -47,7 +58,7 @@ Every **N seconds** (default **300** / 5 minutes):
 
 Only the composition (`.avc`) is copied — media files are not duplicated.
 
-## Tray menu
+### Tray menu
 
 | Action | Effect |
 |--------|--------|
@@ -58,7 +69,7 @@ Only the composition (`.avc`) is copied — media files are not duplicated.
 | **Open log** | View `autosave.log` |
 | **Quit** | Exit |
 
-## Configuration
+### Configuration
 
 Defaults live in `config.default.json`. Runtime overrides go to `config.json` (local, not committed):
 
@@ -66,17 +77,43 @@ Defaults live in `config.default.json`. Runtime overrides go to `config.json` (l
 |-----|---------|---------|
 | `enabled` | `true` | Autosave loop on/off |
 | `host` / `port` | `127.0.0.1` / `8080` | Arena webserver |
-| `interval_seconds` | `300` | Seconds between saves |
-| `backup_dir` | *(Documents Autosaves)* | Where `.avc` copies go |
+| `interval_seconds` | `300` | Seconds between saves (minimum 30) |
+| `backup_dir` | *(Documents\Resolume Arena\Autosaves)* | Where `.avc` copies go |
 | `keep_backups` | `30` | Max backups per composition |
+| `also_copy_after_save` | `true` | Copy the saved `.avc` to the backup folder after each save |
+| `compositions_dir` | *(Documents\Resolume Arena\compositions)* | Where the composition `.avc` is looked up |
 | `start_with_windows` | `false` | Launch at login |
 
-## Tips
+### Tips
 
 - Use **Test connection** in Settings before a show if the webserver might be off.
 - During live sets, raise the interval (10–15 min) or pause to cut disk writes.
 - Backups are safety copies of the composition file only.
 
-## License
+## Project structure
 
-Use and modify freely for your own shows and tooling.
+| File | Role |
+|------|------|
+| `app.py` | Tray app and autosave loop |
+| `arena_client.py` | Minimal Arena REST client (save / status) |
+| `backup.py` | Finds the composition file, writes timestamped copies, prunes old ones |
+| `config.py` / `config.default.json` | Config loading and defaults |
+| `settings_ui.py` | Settings window |
+| `icons.py`, `assets/` | Tray icons |
+| `create_shortcut.py` | Creates the `Resolume Autosave.lnk` shortcut |
+| `start.bat`, `run.bat`, `run_console.bat` | Launchers |
+
+## Tech stack
+
+Python 3.10+, pystray, Pillow, Tkinter (settings UI), Resolume Arena REST API.
+
+## Credits & license
+
+Use and modify freely for your own shows and tooling. No LICENSE file is included in the repository.
+
+---
+
+<p align="center">
+  Made by <a href="https://github.com/elisalien">Élisalien</a> ·
+  <a href="https://gitlab.com/elisalien/catalog">Shaders, sources & software catalog</a>
+</p>
