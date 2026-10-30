@@ -75,9 +75,34 @@ def _pythonw() -> str:
     return str(exe)
 
 
+def parse_overrides(argv: list[str]) -> dict[str, Any]:
+    """Settings given on the command line (Tamagosc options form). They win over config.json."""
+    import argparse
+
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--headless", action="store_true")
+    p.add_argument("--once", action="store_true")
+    p.add_argument("--host")
+    p.add_argument("--port", type=int)
+    p.add_argument("--interval", dest="interval_seconds", type=int)
+    p.add_argument("--keep", dest="keep_backups", type=int)
+    p.add_argument("--backup-dir", dest="backup_dir")
+    p.add_argument("--compositions-dir", dest="compositions_dir")
+    args, _ = p.parse_known_args(argv)
+    out = {k: v for k, v in vars(args).items() if v is not None and k not in ("headless", "once")}
+    if "interval_seconds" in out:
+        out["interval_seconds"] = max(30, out["interval_seconds"])
+    if "keep_backups" in out:
+        out["keep_backups"] = max(1, out["keep_backups"])
+    return out
+
+
 class AutosaveEngine:
-    def __init__(self) -> None:
-        self.cfg = load_config()
+    def __init__(self, overrides: dict[str, Any] | None = None) -> None:
+        # Headless runs (Tamagosc) pass their settings here; they stay applied over
+        # config.json reloads, and the loop is always on (stop the tool to pause).
+        self.overrides = dict(overrides or {})
+        self.cfg = self._load()
         self._cfg_mtime = self._read_mtime()
         self._stop = threading.Event()
         self._wake = threading.Event()
@@ -88,6 +113,13 @@ class AutosaveEngine:
         self.saves = 0
         self.thread = threading.Thread(target=self._loop, name="autosave", daemon=True)
         self.on_config_changed: Any = None
+
+    def _load(self) -> dict[str, Any]:
+        cfg = load_config()
+        if self.overrides:
+            cfg.update(self.overrides)
+            cfg["enabled"] = True
+        return cfg
 
     def _read_mtime(self) -> float:
         try:
@@ -105,7 +137,7 @@ class AutosaveEngine:
 
     def reload(self, cfg: dict[str, Any] | None = None) -> None:
         with self._lock:
-            self.cfg = cfg or load_config()
+            self.cfg = cfg or self._load()
             self._cfg_mtime = self._read_mtime()
         self._wake.set()
         if self.on_config_changed:
@@ -291,11 +323,36 @@ class TrayApp:
         self.icon.run()
 
 
+def run_headless(argv: list[str]) -> None:
+    """No tray icon: started and set up from Tamagosc (LOG on stdout)."""
+    engine = AutosaveEngine(parse_overrides(argv))
+    cfg = engine.cfg
+    if "--once" in argv:
+        try:
+            print(engine.run_once(), flush=True)
+        except Exception as exc:  # noqa: BLE001
+            print(f"Save failed: {exc}", flush=True)
+            sys.exit(1)
+        return
+    log.info(
+        "Resolume Autosave started (headless): every %ss, Arena %s:%s, keep %s in %s",
+        cfg["interval_seconds"], cfg["host"], cfg["port"], cfg["keep_backups"], cfg["backup_dir"],
+    )
+    engine.start()
+    try:
+        engine.thread.join()
+    except KeyboardInterrupt:
+        engine.stop()
+
+
 def main() -> None:
     if "--settings" in sys.argv:
         from settings_ui import main as settings_main
 
         settings_main()
+        return
+    if "--headless" in sys.argv or "--once" in sys.argv:
+        run_headless(sys.argv[1:])
         return
     TrayApp().run()
 
